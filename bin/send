@@ -1,0 +1,114 @@
+#!/bin/bash -e
+
+## - Run Monitoring command in cronjob without TLS PSK Auth
+# ./send --zabbix_server="192.168.178.11" --zabbix_server_port="1234" --debug=False --fritzbox_ip="192.168.178.1" --fritzbox_hostname="MyRouter" --fritzbox_user="admin" --fritzbox_passwd="password123"
+
+## - Run Monitoring command in cronjob with TLS PSK Auth
+# ./send --zabbix_server="192.168.178.11" --zabbix_server_port="1234" --tls_psk_identity="identstring" --tls_psk="kljahsdfkljahsdflkabvcbiuabzsdlivzub" --debug=False --fritzbox_ip="192.168.178.1" --fritzbox_hostname="MyRouter" --fritzbox_user="admin" --fritzbox_passwd="password123"
+
+# Default values for variables
+ZABBIX_SERVER=""
+ZABBIX_SERVER_PORT=""
+TLS_PSK_IDENTITY=""
+TLS_PSK=""
+ZABBIX_SENDER_DEBUG="False"
+FRITZBOX_IP=""
+FRITZBOX_HOSTNAME=""
+FRITZBOX_USER=""
+FRITZBOX_PASSWD=""
+
+# Parse arguments
+for arg in "$@"; do
+  case $arg in
+    --zabbix_server=*)
+      ZABBIX_SERVER="${arg#*=}"
+      shift
+      ;;
+    --zabbix_server_port=*)
+      ZABBIX_SERVER_PORT="${arg#*=}"
+      shift
+      ;;
+    --tls_psk_identity=*)
+      TLS_PSK_IDENTITY="${arg#*=}"
+      shift
+      ;;
+    --tls_psk=*)
+      TLS_PSK="${arg#*=}"
+      shift
+      ;;
+    --debug=*)
+      ZABBIX_SENDER_DEBUG="${arg#*=}"
+      shift
+      ;;
+    --fritzbox_ip=*)
+      FRITZBOX_IP="${arg#*=}"
+      shift
+      ;;
+    --fritzbox_hostname=*)
+      FRITZBOX_HOSTNAME="${arg#*=}"
+      shift
+      ;;
+    --fritzbox_user=*)
+      FRITZBOX_USER="${arg#*=}"
+      shift
+      ;;
+    --fritzbox_passwd=*)
+      FRITZBOX_PASSWD="${arg#*=}"
+      shift
+      ;;
+    *)
+      echo "Unknown argument: $arg"
+      exit 1
+      ;;
+  esac
+done
+
+# Validate required variables
+if [[ -z "$ZABBIX_SERVER" ]]; then
+  echo "Error: --zabbix_server is required"
+  exit 1
+fi
+if [[ -z "$FRITZBOX_IP" ]]; then
+  echo "Error: --fritzbox_ip is required"
+  exit 1
+fi
+if [[ -z "$FRITZBOX_USER" ]] || [[ -z "$FRITZBOX_PASSWD" ]]; then
+  echo "Error: --fritzbox_user and --fritzbox_passwd are required"
+  exit 1
+fi
+
+# Construct the zabbix_sender command
+ZBX_SEND="zabbix_sender -z $ZABBIX_SERVER -i -"
+
+# Add custom port if specified
+if [[ ! -z $ZABBIX_SERVER_PORT ]]; then
+  echo "Using custom Zabbix Server port '$ZABBIX_SERVER_PORT'"
+  ZBX_SEND="${ZBX_SEND} -p ${ZABBIX_SERVER_PORT}"
+fi
+
+# Add TLS with PSK if specified
+if [[ ! -z $TLS_PSK_IDENTITY ]] && [[ ! -z $TLS_PSK ]]; then
+  echo "Using TLS with PSK"
+  echo "${TLS_PSK}" > psk.file
+  ZBX_SEND="${ZBX_SEND} --tls-connect psk --tls-psk-file psk.file --tls-psk-identity $TLS_PSK_IDENTITY"
+fi
+
+# Enable verbose/debug logging if specified
+if [[ "$ZABBIX_SENDER_DEBUG" == "True" ]]; then
+  echo "Enable verbose logging"
+  ZBX_SEND="${ZBX_SEND} -vv"
+  echo "Using the following send command: ${ZBX_SEND}"
+fi
+
+# Main function
+function main() {
+  # Export variables for PHP script
+  export FRITZBOX_IP="$FRITZBOX_IP"
+  export FRITZBOX_HOSTNAME="$FRITZBOX_HOSTNAME"
+  export FRITZBOX_USER="$FRITZBOX_USER"
+  export FRITZBOX_PASSWD="$FRITZBOX_PASSWD"
+
+  php status.php | $ZBX_SEND
+}
+
+main
