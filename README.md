@@ -17,6 +17,30 @@
 3. Checkout the run commands in `send` file and define it for yourself
 4. Run it once or create a cronjob - whatever you want.
 
+## Run with TLS Auth
+```
+./send --zabbix_server="192.168.178.11" \
+  --zabbix_server_port="1234" \
+  --tls_psk_identity="identstring" \
+  --tls_psk="kljahsdfkljahsdflkabvcbiuabzsdlivzub" \
+  --tls_psk_file="/tmp/psk_file_1" \
+  --debug=True \
+  --fritzbox_ip="192.168.178.1" \
+  --fritzbox_hostname="MyRouter" \
+  --fritzbox_user="admin" \
+  --fritzbox_passwd="password123"
+```
+## Run without TLS Auth
+```
+./send --zabbix_server="192.168.178.11" \
+  --zabbix_server_port="1234" \
+  --debug=True \
+  --fritzbox_ip="192.168.178.1" \
+  --fritzbox_hostname="MyRouter" \
+  --fritzbox_user="admin" \
+  --fritzbox_passwd="password123"
+```
+
 ## Information
 - Please make sure that your passwords do not contain a dollar sign.
 
